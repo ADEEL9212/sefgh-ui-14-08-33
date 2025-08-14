@@ -42,34 +42,45 @@ export const ExpandablePromptInput = React.forwardRef<
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // Reset height to get accurate scrollHeight
+    // Reset height to calculate accurate scrollHeight
     textarea.style.height = `${minHeight}px`;
     
     const scrollHeight = textarea.scrollHeight;
     const newHeight = Math.min(scrollHeight, finalMaxHeight);
     
+    // Always set the calculated height
     textarea.style.height = `${newHeight}px`;
-    textarea.style.overflowY = scrollHeight > finalMaxHeight ? 'auto' : 'hidden';
+    
+    // Show scrollbar only when content exceeds max height
+    if (scrollHeight > finalMaxHeight) {
+      textarea.style.overflowY = 'auto';
+    } else {
+      textarea.style.overflowY = 'hidden';
+    }
   }, [minHeight, finalMaxHeight]);
 
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
+    // Trigger height adjustment immediately on change
+    setTimeout(() => adjustHeight(), 0);
   };
 
   // Handle focus
   const handleFocus = () => {
     setIsFocused(true);
     setIsExpanded(true);
+    setTimeout(() => adjustHeight(), 0);
   };
 
   // Handle blur
   const handleBlur = () => {
     setIsFocused(false);
-    // Only collapse if there's no content
+    // Collapse if there's no content, but keep expanded if there is content
     if (!value.trim()) {
       setIsExpanded(false);
     }
+    setTimeout(() => adjustHeight(), 0);
   };
 
   // Toggle expand/collapse
@@ -78,6 +89,7 @@ export const ExpandablePromptInput = React.forwardRef<
     if (!isExpanded) {
       textareaRef.current?.focus();
     }
+    setTimeout(() => adjustHeight(), 0);
   };
 
   // Adjust height when value or expanded state changes
