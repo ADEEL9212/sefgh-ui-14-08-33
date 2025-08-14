@@ -137,7 +137,6 @@ export const ExpandablePromptInput = React.forwardRef<
         )}
         style={{
           minHeight: `${minHeight}px`,
-          height: isExpanded || isFocused || value ? 'auto' : `${minHeight}px`,
         }}
         {...props}
       />
