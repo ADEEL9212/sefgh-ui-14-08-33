@@ -396,7 +396,7 @@ export const ChatPanel = ({
           {/* Tools panel - shows when tools button is clicked */}
           {showToolsMenu && (
             <div className="tools-menu-container relative">
-              <div className="mb-3 bg-gray-900 dark:bg-gray-800 text-white rounded-xl shadow-2xl p-4 border border-gray-700" 
+              <div className="mb-3 bg-gray-900 dark:bg-gray-800 text-white rounded-xl shadow-2xl p-4 border border-gray-700 w-64 max-w-sm" 
                    style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
                 <div className="space-y-1">
                   {/* Add photos & files */}
