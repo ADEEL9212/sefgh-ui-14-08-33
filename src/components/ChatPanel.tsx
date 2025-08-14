@@ -581,7 +581,7 @@ export const ChatPanel = ({
               value={input}
               onChange={setInput}
               placeholder="Ask anything"
-              className="flex-1 bg-transparent border-none text-slate-200 placeholder:text-slate-500 focus:outline-none"
+              className="flex-1 bg-transparent border-none text-foreground placeholder:text-muted-foreground focus:outline-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
