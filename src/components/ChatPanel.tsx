@@ -484,7 +484,16 @@ export const ChatPanel = ({
                   <div 
                     className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 cursor-pointer transition-all duration-150 relative"
                     onMouseEnter={() => setShowMoreMenu(true)}
-                    onMouseLeave={() => setShowMoreMenu(false)}
+                    onMouseLeave={(e) => {
+                      // Only hide if not moving to the submenu
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const submenuRect = e.currentTarget.querySelector('.submenu-panel')?.getBoundingClientRect();
+                      if (submenuRect && e.clientX >= submenuRect.left && e.clientX <= submenuRect.right && 
+                          e.clientY >= submenuRect.top && e.clientY <= submenuRect.bottom) {
+                        return;
+                      }
+                      setTimeout(() => setShowMoreMenu(false), 100);
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <MoreHorizontal className="h-5 w-5 text-gray-300" />
@@ -494,8 +503,12 @@ export const ChatPanel = ({
                     
                     {/* Secondary dropdown panel */}
                     {showMoreMenu && (
-                      <div className="absolute left-full top-0 ml-2 bg-gray-900 dark:bg-gray-800 text-white rounded-xl shadow-2xl p-4 w-48 z-50"
-                           style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+                      <div 
+                        className="submenu-panel absolute left-full top-0 ml-1 bg-gray-900 dark:bg-gray-800 text-white rounded-xl shadow-2xl p-4 w-48 z-[60]"
+                        style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
+                        onMouseEnter={() => setShowMoreMenu(true)}
+                        onMouseLeave={() => setTimeout(() => setShowMoreMenu(false), 100)}
+                      >
                         <div className="space-y-1">
                           {/* Web Search */}
                           <div 

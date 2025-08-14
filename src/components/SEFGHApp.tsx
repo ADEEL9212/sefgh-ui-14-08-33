@@ -227,7 +227,7 @@ export const SEFGHApp = () => {
     
     // Enable cancellation after 5 seconds
     const cancelTimeoutId = setTimeout(() => {
-      updateState(prev => ({ ...prev, canCancelLoading: true }));
+      updateState({ canCancelLoading: true });
     }, 5000);
     
     const timeoutId = setTimeout(() => {
