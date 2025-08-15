@@ -7,6 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Send, Copy, RotateCcw, Edit3, Trash2, User, Bot, Loader2, Plus, Paperclip, HardDrive, Code, Mic, Settings, Github, ImageIcon, Lightbulb, Globe, PaintBucket, ChevronDown, ChevronRight, BookOpen, Filter, X, Search, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ThinkingBar, SkeletonMessage } from '@/components/chat';
+import { ChatProvider, useChat } from '@/providers/ChatProvider';
 interface Message {
   id: string;
   type: 'user' | 'assistant';
@@ -40,6 +42,41 @@ export const ChatPanel = ({
   canCancelLoading = false,
   inputRef
 }: ChatPanelProps) => {
+  return (
+    <ChatProvider 
+      onCancel={onCancelMessage}
+      onRetry={() => console.log('Retry requested')}
+    >
+      <ChatPanelContent
+        messages={messages}
+        onSendMessage={onSendMessage}
+        onEditMessage={onEditMessage}
+        onDeleteMessage={onDeleteMessage}
+        onRegenerateResponse={onRegenerateResponse}
+        onToggleGithubSearch={onToggleGithubSearch}
+        onOpenCanvas={onOpenCanvas}
+        onCancelMessage={onCancelMessage}
+        isLoading={isLoading}
+        canCancelLoading={canCancelLoading}
+        inputRef={inputRef}
+      />
+    </ChatProvider>
+  );
+};
+
+const ChatPanelContent = ({
+  messages,
+  onSendMessage,
+  onEditMessage,
+  onDeleteMessage,
+  onRegenerateResponse,
+  onToggleGithubSearch,
+  onOpenCanvas,
+  onCancelMessage,
+  isLoading,
+  canCancelLoading = false,
+  inputRef
+}: ChatPanelProps) => {
   const [input, setInput] = useState('');
   const [editingMessage, setEditingMessage] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -49,9 +86,11 @@ export const ChatPanel = ({
   const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+
+  // Chat thinking system hooks
+  const { thinking, setThinking, startStep, completeStep, setVisible } = useChat();
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({
       behavior: 'smooth'
@@ -75,9 +114,62 @@ export const ChatPanel = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showAttachMenu, showToolsMenu]);
+
+  // Effect to simulate thinking progression when loading
+  useEffect(() => {
+    if (!isLoading || !thinking.visible) return;
+
+    const progressSteps = async () => {
+      // Step 1: Understanding (already active)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      completeStep('understand');
+      startStep('plan', 'Planning response');
+
+      // Step 2: Planning
+      await new Promise(resolve => setTimeout(resolve, 800));
+      completeStep('plan');
+      startStep('retrieve', 'Gathering information');
+
+      // Step 3: Retrieving (simulate tool usage)
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      completeStep('retrieve');
+      startStep('compose', 'Composing answer');
+
+      // Step 4: Composing
+      await new Promise(resolve => setTimeout(resolve, 600));
+      completeStep('compose');
+      startStep('finalize', 'Finalizing');
+
+      // Final step
+      await new Promise(resolve => setTimeout(resolve, 400));
+      completeStep('finalize');
+      
+      // Hide thinking bar after completion
+      setTimeout(() => {
+        setVisible(false);
+      }, 600);
+    };
+
+    progressSteps().catch(console.error);
+  }, [isLoading, thinking.visible, completeStep, startStep, setVisible]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
+      // Initialize thinking system
+      setThinking({
+        visible: true,
+        canCancel: true,
+        steps: [
+          { id: 'understand', label: 'Understanding request', status: 'active', startedAt: Date.now() },
+          { id: 'plan', label: 'Planning response', status: 'pending' },
+          { id: 'retrieve', label: 'Gathering information', status: 'pending' },
+          { id: 'compose', label: 'Composing answer', status: 'pending' },
+          { id: 'finalize', label: 'Finalizing', status: 'pending' },
+        ],
+        activeStep: 'understand',
+      });
+
       onSendMessage(input.trim());
       setInput('');
     }
@@ -243,7 +335,16 @@ export const ChatPanel = ({
             </Card>
           </div>)}
 
-        {isLoading && <div className="flex gap-3">
+        {/* Thinking Bar - shows during AI processing */}
+        {thinking.visible && (
+          <div className="space-y-3">
+            <ThinkingBar />
+            <SkeletonMessage />
+          </div>
+        )}
+
+        {/* Legacy loading indicator - fallback */}
+        {isLoading && !thinking.visible && <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
               <Bot className="h-4 w-4 text-muted-foreground" />
             </div>

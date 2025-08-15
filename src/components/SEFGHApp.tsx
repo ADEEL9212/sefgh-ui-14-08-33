@@ -225,64 +225,28 @@ export const SEFGHApp = () => {
     const abortController = new AbortController();
     currentAbortControllerRef.current = abortController;
     
-    // Enable cancellation after 5 seconds
+    // Enable cancellation after 3 seconds for demo
     const cancelTimeoutId = setTimeout(() => {
       updateState({ canCancelLoading: true });
-    }, 5000);
+    }, 3000);
     
     const timeoutId = setTimeout(() => {
       abortController.abort();
     }, 20000); // 20 second timeout
 
     try {
-      const response = await fetch('https://api.sefgh.org', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: content }),
-        signal: abortController.signal,
-      });
-
+      // DEMO: Simulate a successful API response instead of making real request
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Simulate 5 second response
+      
       // Clear timeouts if request completes
       clearTimeout(timeoutId);
       clearTimeout(cancelTimeoutId);
       currentAbortControllerRef.current = null;
 
-      if (!response.ok) {
-        throw new Error(`API request failed with status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Extract message and query from API response
-      let messageContent = '';
-      let shouldOpenGithubSearch = false;
-      let githubQuery = '';
-
-      if (data && typeof data === 'object') {
-        // Type 1: Has both message and query
-        if (data.message && data.query) {
-          messageContent = data.message;
-          shouldOpenGithubSearch = true;
-          githubQuery = data.query;
-        }
-        // Type 2: Has only message
-        else if (data.message) {
-          messageContent = data.message;
-        }
-        // Fallback: stringify the whole response
-        else {
-          messageContent = JSON.stringify(data, null, 2);
-        }
-      } else {
-        messageContent = String(data);
-      }
-      
       const assistantMessage: Message = {
         id: Math.random().toString(36).substr(2, 9),
         type: 'assistant',
-        content: messageContent,
+        content: 'React hooks are a powerful feature introduced in React 16.8 that allow you to use state and other React features in functional components. They provide a way to reuse stateful logic between components without changing the component hierarchy.',
         timestamp: new Date(),
       };
 
@@ -290,11 +254,6 @@ export const SEFGHApp = () => {
         messages: [...state.messages, userMessage, assistantMessage],
         isLoading: false,
         canCancelLoading: false,
-        // If there's a query, open the GitHub search panel
-        ...(shouldOpenGithubSearch && { 
-          isSearchVisible: true,
-          githubSearchQuery: githubQuery
-        })
       });
 
     } catch (error) {
