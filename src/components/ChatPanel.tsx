@@ -7,6 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Send, Copy, RotateCcw, Edit3, Trash2, User, Bot, Loader2, Plus, Paperclip, HardDrive, Code, Mic, Settings, Github, ImageIcon, Lightbulb, Globe, PaintBucket, ChevronDown, ChevronRight, BookOpen, Filter, X, Search, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ThinkingBar } from '@/components/chat/ThinkingBar';
+import { ChatProvider, useChatContext } from '@/providers/ChatProvider';
 interface Message {
   id: string;
   type: 'user' | 'assistant';
@@ -27,7 +29,7 @@ interface ChatPanelProps {
   canCancelLoading?: boolean;
   inputRef?: React.RefObject<HTMLTextAreaElement>;
 }
-export const ChatPanel = ({
+const ChatPanelInner = ({
   messages,
   onSendMessage,
   onEditMessage,
@@ -52,6 +54,7 @@ export const ChatPanel = ({
   const {
     toast
   } = useToast();
+  const { startThinking, stopThinking, setActiveStep } = useChatContext();
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({
       behavior: 'smooth'
@@ -75,6 +78,23 @@ export const ChatPanel = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showAttachMenu, showToolsMenu]);
+
+  // Manage thinking state based on loading
+  useEffect(() => {
+    if (isLoading) {
+      startThinking();
+      // Simulate progression through thinking steps
+      const steps = ['understand', 'plan', 'retrieve', 'compose', 'finalize'];
+      steps.forEach((step, index) => {
+        setTimeout(() => {
+          setActiveStep(step);
+        }, index * 1000); // 1 second between steps
+      });
+    } else {
+      stopThinking();
+    }
+  }, [isLoading, startThinking, stopThinking, setActiveStep]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
@@ -243,24 +263,7 @@ export const ChatPanel = ({
             </Card>
           </div>)}
 
-        {isLoading && <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-              <Bot className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <Card className="flex-1 max-w-[80%]">
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-muted-foreground">AI is thinking...</span>
-                  </div>
-                  {canCancelLoading && onCancelMessage && <Button size="sm" variant="ghost" onClick={onCancelMessage} className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" title="Cancel request">
-                      <X className="h-3 w-3" />
-                    </Button>}
-                </div>
-              </CardContent>
-            </Card>
-          </div>}
+        {isLoading && <ThinkingBar showInlineChips />}
 
         <div ref={messagesEndRef} />
       </div>
@@ -440,4 +443,12 @@ export const ChatPanel = ({
         </form>
       </div>
     </div>;
+};
+
+export const ChatPanel = (props: ChatPanelProps) => {
+  return (
+    <ChatProvider onCancel={props.onCancelMessage}>
+      <ChatPanelInner {...props} />
+    </ChatProvider>
+  );
 };

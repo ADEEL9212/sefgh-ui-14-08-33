@@ -221,6 +221,9 @@ export const SEFGHApp = () => {
       canCancelLoading: false,
     });
 
+    // Demo: Add delay to showcase thinking bar (remove this in production)
+    await new Promise(resolve => setTimeout(resolve, 6000)); // 6 second delay
+
     // Create abort controller for timeout and cancellation
     const abortController = new AbortController();
     currentAbortControllerRef.current = abortController;
