@@ -95,7 +95,7 @@ export const UserProfileDropdown = ({
               variant="ghost"
               className="w-full justify-start gap-3 hover:bg-accent"
               onClick={() => {
-                onOpenProfile();
+                navigate('/profile');
                 onClose();
               }}
             >
