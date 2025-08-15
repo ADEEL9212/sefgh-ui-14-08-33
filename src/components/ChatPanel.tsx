@@ -4,9 +4,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { ExpandablePromptInput } from '@/components/ExpandablePromptInput';
 import { ToolsDropdown } from '@/components/ToolsDropdown';
 import { Card, CardContent } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Send, Copy, RotateCcw, Edit3, Trash2, User, Bot, Loader2, Plus, Paperclip, HardDrive, Code, Mic, Settings, Github, ImageIcon, Lightbulb, Globe, PaintBucket, ChevronDown, ChevronRight, BookOpen, Filter, X, Search, MoreHorizontal } from 'lucide-react';
+import { Send, Copy, RotateCcw, Edit3, Trash2, User, Bot, Loader2, Plus, Paperclip, HardDrive, Code, Mic, Settings, Github, ImageIcon, Lightbulb, Globe, PaintBucket, ChevronDown, ChevronRight, BookOpen, Filter, X, Search, MoreHorizontal, Download, Share2, FileText, FileDown, File } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ChatService } from '@/services/chatService';
+import { ThinkingBar } from '@/components/chat/ThinkingBar';
+import { ChatProvider, useChat } from '@/providers/ChatProvider';
 interface Message {
   id: string;
   type: 'user' | 'assistant';
@@ -27,7 +31,8 @@ interface ChatPanelProps {
   canCancelLoading?: boolean;
   inputRef?: React.RefObject<HTMLTextAreaElement>;
 }
-export const ChatPanel = ({
+
+const ChatPanelContent = ({
   messages,
   onSendMessage,
   onEditMessage,
@@ -52,6 +57,16 @@ export const ChatPanel = ({
   const {
     toast
   } = useToast();
+  
+  // Access thinking functionality from ChatProvider
+  const { 
+    thinking, 
+    setThinkingVisible, 
+    startStep, 
+    completeStep, 
+    resetThinking,
+    cancel: cancelThinking 
+  } = useChat();
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({
       behavior: 'smooth'
@@ -60,6 +75,16 @@ export const ChatPanel = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  // Handle loading state changes for thinking animation
+  useEffect(() => {
+    if (!isLoading && thinking.visible) {
+      // Hide thinking animation when response starts coming in
+      setTimeout(() => {
+        resetThinking();
+      }, 200);
+    }
+  }, [isLoading, thinking.visible, resetThinking]);
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (showAttachMenu && !(event.target as Element).closest('.attach-menu-container')) {
@@ -78,7 +103,17 @@ export const ChatPanel = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
-      onSendMessage(input.trim());
+      // Start thinking animation
+      setThinkingVisible(true);
+      startStep('understand', 'Understanding your request');
+      
+      // Add a small delay for realism, then start the actual request
+      setTimeout(() => {
+        completeStep('understand');
+        startStep('plan', 'Planning response');
+        onSendMessage(input.trim());
+      }, 500);
+      
       setInput('');
     }
   };
@@ -178,7 +213,145 @@ export const ChatPanel = ({
     };
     recognition.start();
   };
+
+  const handleExportChat = (format: 'txt' | 'md' | 'pdf' | 'json') => {
+    if (messages.length === 0) {
+      toast({
+        title: "No messages to export",
+        description: "Start a conversation to export it",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      // Create a temporary session for export
+      const tempSession = {
+        id: 'current-chat',
+        title: ChatService.generateChatTitle(messages),
+        lastMessage: messages[messages.length - 1].content.slice(0, 100),
+        timestamp: new Date(),
+        messageCount: messages.length,
+        messages: messages
+      };
+
+      switch (format) {
+        case 'txt':
+          ChatService.exportAsTxt(tempSession);
+          break;
+        case 'md':
+          ChatService.exportAsMarkdown(tempSession);
+          break;
+        case 'pdf':
+          ChatService.exportAsPdf(tempSession);
+          break;
+        case 'json':
+          ChatService.exportAsJson(tempSession);
+          break;
+      }
+      toast({
+        title: "Export successful",
+        description: `Chat exported as ${format.toUpperCase()}`,
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Failed to export chat",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  };
+
+  const handleShareChat = async () => {
+    if (messages.length === 0) {
+      toast({
+        title: "No messages to share",
+        description: "Start a conversation to share it",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      // Create a temporary session for sharing
+      const tempSession = {
+        id: 'current-chat',
+        title: ChatService.generateChatTitle(messages),
+        lastMessage: messages[messages.length - 1].content.slice(0, 100),
+        timestamp: new Date(),
+        messageCount: messages.length,
+        messages: messages
+      };
+
+      const shareUrl = ChatService.createShareableLink(tempSession);
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Share link copied",
+        description: "Anyone with this link can view the conversation",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Share failed:', error);
+      toast({
+        title: "Share failed",
+        description: "Failed to create shareable link",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  };
   return <div className="flex flex-col h-full">
+      {/* Chat toolbar */}
+      {messages.length > 0 && (
+        <div className="border-b px-4 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              {messages.length} message{messages.length !== 1 ? 's' : ''} in conversation
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Export dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExportChat('txt')}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as TXT
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExportChat('md')}>
+                    <File className="h-4 w-4 mr-2" />
+                    Export as Markdown
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExportChat('pdf')}>
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExportChat('json')}>
+                    <Code className="h-4 w-4 mr-2" />
+                    Export as JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Share button */}
+              <Button variant="ghost" size="sm" onClick={handleShareChat}>
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && <div className="text-center py-12">
@@ -261,6 +434,13 @@ export const ChatPanel = ({
               </CardContent>
             </Card>
           </div>}
+
+        {/* Thinking animation */}
+        {thinking.visible && (
+          <div className="px-4 py-2">
+            <ThinkingBar />
+          </div>
+        )}
 
         <div ref={messagesEndRef} />
       </div>
@@ -440,4 +620,18 @@ export const ChatPanel = ({
         </form>
       </div>
     </div>;
+};
+
+// Wrapper component that provides ChatProvider
+export const ChatPanel = (props: ChatPanelProps) => {
+  return (
+    <ChatProvider
+      onCancel={props.onCancelMessage}
+      onRetry={() => {
+        // Could implement retry logic here if needed
+      }}
+    >
+      <ChatPanelContent {...props} />
+    </ChatProvider>
+  );
 };

@@ -12,6 +12,7 @@ import { AllPagesPanel } from './panels/AllPagesPanel';
 import { CanvasPanel } from './CanvasPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { ChatService } from '@/services/chatService';
 
 interface Message {
   id: string;
@@ -119,14 +120,6 @@ export const SEFGHApp = () => {
             ...msg,
             timestamp: new Date(msg.timestamp),
           })) || [],
-          chatSessions: parsed.chatSessions?.map((session: any) => ({
-            ...session,
-            timestamp: new Date(session.timestamp),
-            messages: session.messages?.map((msg: any) => ({
-              ...msg,
-              timestamp: new Date(msg.timestamp),
-            })) || [],
-          })) || [],
           consoleLogs: parsed.consoleLogs?.map((log: any) => ({
             ...log,
             timestamp: new Date(log.timestamp),
@@ -137,15 +130,24 @@ export const SEFGHApp = () => {
       }
     }
 
+    // Load chat sessions from ChatService (separate storage)
+    try {
+      const chatSessions = ChatService.getChatSessions();
+      setState(prev => ({ ...prev, chatSessions }));
+    } catch (error) {
+      console.error('Failed to load chat sessions:', error);
+    }
+
     // Apply saved theme
     const savedTheme = localStorage.getItem('sefgh-theme') || 'light';
     setState(prev => ({ ...prev, theme: savedTheme as 'light' | 'dark' }));
     document.documentElement.classList.toggle('dark', savedTheme === 'dark');
   }, []);
 
-  // Save state to localStorage whenever it changes
+  // Save state to localStorage whenever it changes (exclude chatSessions - managed separately)
   useEffect(() => {
-    localStorage.setItem('sefgh-app-state', JSON.stringify(state));
+    const { chatSessions, ...stateToSave } = state;
+    localStorage.setItem('sefgh-app-state', JSON.stringify(stateToSave));
     localStorage.setItem('sefgh-theme', state.theme);
   }, [state]);
 
@@ -403,11 +405,38 @@ export const SEFGHApp = () => {
   }, [setActiveView]);
 
   const handleNewChat = useCallback(() => {
-    updateState({ messages: [], activeView: 'chat' });
+    // Save current chat session if it has messages
+    if (state.messages.length > 0) {
+      try {
+        const savedSession = ChatService.saveChatSession(state.messages);
+        
+        // Update sessions in state
+        const updatedSessions = [savedSession, ...state.chatSessions];
+        updateState({ 
+          messages: [], 
+          activeView: 'chat',
+          chatSessions: updatedSessions
+        });
+
+        toast({
+          title: "Chat saved",
+          description: `"${savedSession.title}" has been saved to history`,
+          duration: 2000,
+        });
+      } catch (error) {
+        console.error('Failed to save chat session:', error);
+        // Still clear the chat even if save fails
+        updateState({ messages: [], activeView: 'chat' });
+      }
+    } else {
+      // No messages to save, just clear
+      updateState({ messages: [], activeView: 'chat' });
+    }
+    
     setTimeout(() => {
       chatInputRef.current?.focus();
     }, 100);
-  }, [updateState]);
+  }, [state.messages, state.chatSessions, updateState, toast]);
 
   // Canvas handlers
   const openCanvas = useCallback(() => {
@@ -511,8 +540,24 @@ export const SEFGHApp = () => {
               }
             }}
             onDeleteSession={(sessionId) => {
-              const updatedSessions = state.chatSessions.filter(s => s.id !== sessionId);
-              updateState({ chatSessions: updatedSessions });
+              try {
+                ChatService.deleteChatSession(sessionId);
+                const updatedSessions = state.chatSessions.filter(s => s.id !== sessionId);
+                updateState({ chatSessions: updatedSessions });
+                toast({
+                  title: "Chat deleted",
+                  description: "Chat session has been removed from history",
+                  duration: 2000,
+                });
+              } catch (error) {
+                console.error('Failed to delete chat session:', error);
+                toast({
+                  title: "Delete failed",
+                  description: "Failed to delete chat session",
+                  variant: "destructive",
+                  duration: 3000,
+                });
+              }
             }}
           />
         );
