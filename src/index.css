@@ -209,4 +209,10 @@ All colors MUST be HSL.
   .notification {
     @apply fixed top-4 right-4 z-50 animate-slide-in-right;
   }
+
+  /* Token cursor animation */
+  @keyframes token-cursor {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+  }
 }
