@@ -398,9 +398,8 @@ export const ChatPanel = ({
             </Tooltip>
             
             {/* Tools toggle button */}
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowToolsMenu(!showToolsMenu)} className={`flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg px-2 py-1 text-sm transition-colors ${showToolsMenu ? 'bg-slate-700 text-white' : ''}`}>
-              <Filter className="h-4 w-4" />
-              + Tools
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowToolsMenu(!showToolsMenu)} className={`flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg p-2 transition-colors ${showToolsMenu ? 'bg-slate-700 text-white' : ''}`}>
+              <Plus className="h-4 w-4" />
             </Button>
 
             {/* Input field */}
