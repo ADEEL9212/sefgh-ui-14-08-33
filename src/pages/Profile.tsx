@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, ExternalLink, Check, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ExternalLink, Check, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ProfilePictureUpload } from '@/components/profile/ProfilePictureUpload';
 import { useUser } from '@/contexts/UserContext';
@@ -58,6 +60,21 @@ export default function Profile() {
   const [newSocialPlatform, setNewSocialPlatform] = useState('');
   const [newSocialUsername, setNewSocialUsername] = useState('');
   const [isDirty, setIsDirty] = useState(false);
+
+  // Respect user's motion preferences
+  const shouldReduceMotion = useReducedMotion();
+
+  // Animation variants
+  const pageVariants = {
+    initial: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 },
+    animate: shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 },
+    exit: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -20 }
+  };
+
+  const cardVariants = {
+    initial: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 },
+    animate: shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }
+  };
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -242,44 +259,98 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-surface-elevated">
-        <div className="container mx-auto px-4 py-4">
+    <motion.div 
+      className="min-h-screen bg-background"
+      initial="initial"
+      animate="animate"
+      variants={pageVariants}
+      transition={{ duration: shouldReduceMotion ? 0 : 0.3 }}
+    >
+      {/* Enhanced Header with gradient */}
+      <motion.header 
+        className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-transparent backdrop-blur-sm"
+        initial={shouldReduceMotion ? {} : { opacity: 0, y: -20 }}
+        animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+      >
+        <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigate('/')}
+                  className="hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Return to dashboard</p>
+              </TooltipContent>
+            </Tooltip>
             <div>
-              <h1 className="text-2xl font-bold">My Profile</h1>
-              <p className="text-sm text-muted-foreground">Manage your profile information and preferences</p>
+              <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
+              <p className="text-sm text-muted-foreground mt-1">Manage your profile information and preferences</p>
             </div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+          initial={shouldReduceMotion ? {} : { opacity: 0 }}
+          animate={shouldReduceMotion ? {} : { opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
           {/* Left Column - Profile Picture & Quick Actions */}
-          <div className="lg:col-span-1">
-            <ProfilePictureUpload
-              avatar={profile.avatar}
-              name={profile.name}
-              onAvatarChange={(url) => updateProfile({ avatar: url })}
-            />
-          </div>
+          <motion.div 
+            className="lg:col-span-4 space-y-6"
+            variants={cardVariants}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: shouldReduceMotion ? 0 : 0.35 }}
+          >
+            <div className="bg-card text-card-foreground border border-border shadow-sm hover:shadow-md transition-shadow duration-200 rounded-lg p-6">
+              <ProfilePictureUpload
+                avatar={profile.avatar}
+                name={profile.name}
+                onAvatarChange={(url) => updateProfile({ avatar: url })}
+              />
+            </div>
+          </motion.div>
 
           {/* Right Column - Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <motion.div 
+            className="lg:col-span-8"
+            variants={cardVariants}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: shouldReduceMotion ? 0 : 0.35, delay: shouldReduceMotion ? 0 : 0.1 }}
+          >
+            <div className="space-y-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Personal Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Personal Information</CardTitle>
-                    <CardDescription>Basic information about yourself</CardDescription>
-                  </CardHeader>
+                <motion.div
+                  variants={cardVariants}
+                  initial="initial"
+                  animate="animate"
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.25, delay: shouldReduceMotion ? 0 : 0.2 }}
+                >
+                  <Card className="bg-card text-card-foreground border-border shadow-sm hover:shadow-md transition-shadow duration-200 relative">
+                    {/* Active section indicator */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/70 rounded-r-sm"></div>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        Personal Information
+                        <div className="h-2 w-2 bg-primary rounded-full"></div>
+                      </CardTitle>
+                      <CardDescription>Basic information about yourself</CardDescription>
+                    </CardHeader>
                   <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
@@ -341,7 +412,8 @@ export default function Profile() {
                       )}
                     />
                   </CardContent>
-                </Card>
+                  </Card>
+                </motion.div>
 
                 {/* Contact Information */}
                 <Card>
@@ -586,28 +658,39 @@ export default function Profile() {
                 </Card>
 
                 {/* Action Buttons */}
-                <div className="flex gap-4 sticky bottom-0 bg-background py-4 border-t">
-                  <Button
-                    type="submit"
-                    disabled={loading || !isDirty}
-                    className="flex-1 lg:flex-none"
-                  >
-                    {loading ? 'Saving...' : 'Save Changes'}
-                  </Button>
+                <div className="flex gap-4 sticky bottom-0 bg-background/95 backdrop-blur-sm py-4 border-t border-border shadow-lg">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="submit"
+                        disabled={loading || !isDirty}
+                        className="flex-1 lg:flex-none bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loading && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        {loading ? 'Saving...' : 'Save Changes'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{!isDirty ? 'No changes to save' : 'Save your profile changes'}</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleCancel}
-                    className="flex-1 lg:flex-none"
+                    className="flex-1 lg:flex-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     Cancel
                   </Button>
                 </div>
               </form>
             </Form>
-          </div>
-        </div>
+            </div>
+          </motion.div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
