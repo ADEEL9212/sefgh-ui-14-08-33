@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import SharedChat from "./pages/SharedChat";
+import ThinkingDemo from "./pages/ThinkingDemo";
 
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/shared/:shareId" element={<SharedChat />} />
+            <Route path="/thinking-demo" element={<ThinkingDemo />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
