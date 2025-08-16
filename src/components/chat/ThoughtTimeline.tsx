@@ -133,7 +133,7 @@ function StepRow({ step, index, prefersReducedMotion }: StepRowProps) {
     transition: { 
       duration: 0.2, 
       delay: index * 0.08,
-      ease: "easeOut" as any
+      ease: "easeOut" 
     }
   };
   
@@ -142,8 +142,8 @@ function StepRow({ step, index, prefersReducedMotion }: StepRowProps) {
     transition: step.status === 'active' ? {
       duration: 1.5,
       repeat: Infinity,
-      ease: "easeInOut" as any
-    } : { duration: 0.2, ease: "easeOut" as any }
+      ease: "easeInOut"
+    } : { duration: 0.2, ease: "easeOut" }
   };
   
   return (

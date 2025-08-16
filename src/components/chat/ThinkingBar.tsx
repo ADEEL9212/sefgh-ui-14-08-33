@@ -78,7 +78,7 @@ export const ThinkingBar = React.forwardRef<ThinkingBarRef, ThinkingBarProps>(
     initial: { opacity: 0, y: -4 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -4 },
-    transition: { duration: 0.2, ease: "easeOut" as any }
+    transition: { duration: 0.2, ease: "easeOut" }
   };
   
   return (
@@ -117,7 +117,7 @@ export const ThinkingBar = React.forwardRef<ThinkingBarRef, ThinkingBarProps>(
                     duration: 1.4,
                     repeat: Infinity,
                     delay: i * 0.2,
-                    ease: "easeInOut" as any
+                    ease: "easeInOut"
                   }}
                 />
               ))}
@@ -215,7 +215,7 @@ function ToolChipComponent({
       x: visible ? 0 : -10 
     },
     exit: { opacity: 0, scale: 0.8, x: -10 },
-    transition: { duration: 0.2, ease: "easeOut" as any }
+    transition: { duration: 0.2, ease: "easeOut" }
   };
   
   return (

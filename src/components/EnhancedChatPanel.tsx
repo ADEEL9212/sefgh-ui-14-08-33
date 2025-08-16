@@ -1,14 +1,15 @@
 /**
- * Enhanced ChatPanel with integrated thinking system
- * Shows real-time AI thinking process directly in the chat
+ * Enhanced ChatPanel with thinking system integration
+ * Wraps the existing ChatPanel with minimal modifications
  */
 
 import React, { useRef, useState } from 'react';
-import { ChatProvider, useChat } from '@/providers/ChatProvider';
+import { ChatProvider } from '@/providers/ChatProvider';
 import { ChatPanel } from './ChatPanel';
+import { ThinkingBar, ThinkingBarRef } from './chat/ThinkingBar';
+import { ThoughtTimeline, useThoughtTimeline } from './chat/ThoughtTimeline';
+import { useChat } from '@/providers/ChatProvider';
 import { useSimulatedStream } from '@/hooks/useStreamSSE';
-import { Button } from '@/components/ui/button';
-import { Eye, EyeOff } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -18,7 +19,7 @@ interface Message {
   isEditing?: boolean;
 }
 
-interface ChatPanelProps {
+interface EnhancedChatPanelProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
   onEditMessage: (id: string, newContent: string) => void;
@@ -30,18 +31,17 @@ interface ChatPanelProps {
   isLoading: boolean;
   canCancelLoading?: boolean;
   inputRef?: React.RefObject<HTMLTextAreaElement>;
+  enableThinking?: boolean; // New prop to enable/disable thinking system
 }
 
-export function ChatPanelWithThinking(props: ChatPanelProps) {
-  const [showThinking, setShowThinking] = useState(() => {
-    return localStorage.getItem('sefgh-show-thinking') !== 'false'; // Default to true
-  });
-
-  // Save preference to localStorage
-  React.useEffect(() => {
-    localStorage.setItem('sefgh-show-thinking', showThinking.toString());
-  }, [showThinking]);
-
+export function EnhancedChatPanel(props: EnhancedChatPanelProps) {
+  const { enableThinking = false, ...chatPanelProps } = props;
+  
+  if (!enableThinking) {
+    // Return original ChatPanel if thinking is disabled
+    return <ChatPanel {...chatPanelProps} />;
+  }
+  
   return (
     <ChatProvider
       onCancel={() => {
@@ -52,37 +52,12 @@ export function ChatPanelWithThinking(props: ChatPanelProps) {
         console.log('Retry requested');
       }}
     >
-      <div className="flex flex-col h-full relative">
-        {/* Thinking toggle button - only show if there are messages */}
-        {props.messages.length > 0 && (
-          <div className="border-b px-4 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                {props.messages.length} message{props.messages.length !== 1 ? 's' : ''} in conversation
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowThinking(!showThinking)}
-                className="gap-2"
-              >
-                {showThinking ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                {showThinking ? 'Hide' : 'Show'} thinking
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <ChatPanelWithThinkingInner 
-          {...props} 
-          showThinking={showThinking}
-        />
-      </div>
+      <EnhancedChatPanelInner {...chatPanelProps} />
     </ChatProvider>
   );
 }
 
-function ChatPanelWithThinkingInner(props: ChatPanelProps & { showThinking: boolean }) {
+function EnhancedChatPanelInner(props: Omit<EnhancedChatPanelProps, 'enableThinking'>) {
   const [enhancedMessages, setEnhancedMessages] = useState(props.messages);
   const [currentStreamingId, setCurrentStreamingId] = useState<string | null>(null);
   
@@ -99,6 +74,9 @@ function ChatPanelWithThinkingInner(props: ChatPanelProps & { showThinking: bool
     resetThinking,
     resetStreaming
   } = useChat();
+  
+  const { isVisible: timelineVisible, toggle: toggleTimeline } = useThoughtTimeline();
+  const thinkingBarRef = useRef<ThinkingBarRef>(null);
   
   const simulatedStream = useSimulatedStream({
     onChunk: (chunk) => {
@@ -127,9 +105,6 @@ function ChatPanelWithThinkingInner(props: ChatPanelProps & { showThinking: bool
   const handleSendMessage = async (message: string) => {
     // Call original handler
     props.onSendMessage(message);
-    
-    // Only show thinking if enabled
-    if (!props.showThinking) return;
     
     // Start thinking process for the expected assistant response
     setTimeout(async () => {
@@ -161,6 +136,9 @@ function ChatPanelWithThinkingInner(props: ChatPanelProps & { showThinking: bool
       await delay(600);
       completeStep('plan');
       
+      // Add tool event
+      thinkingBarRef.current?.addToolChip('search');
+      
       // Step 3: Searching
       startStep('retrieve', 'Searching knowledge...', { toolName: 'github' });
       await delay(800);
@@ -171,7 +149,7 @@ function ChatPanelWithThinkingInner(props: ChatPanelProps & { showThinking: bool
       startStreaming(messageId);
       
       // Start simulated response
-      const response = "I'm processing your request and will provide a comprehensive response. This demonstrates the real-time thinking system integrated directly into the chat interface.";
+      const response = "Based on your question, I've searched through relevant information and can provide you with a comprehensive answer. This response demonstrates the thinking process visualization system working seamlessly with the existing chat interface.";
       
       simulatedStream.startStream(response, messageId, 40);
       
@@ -193,13 +171,41 @@ function ChatPanelWithThinkingInner(props: ChatPanelProps & { showThinking: bool
   }, [props.messages]);
   
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Pass to ChatPanel */}
+    <div className="flex flex-col h-full relative">
+      {/* Thinking overlay */}
+      {thinking.visible && (
+        <div className="absolute top-0 left-0 right-0 z-10 p-4">
+          <ThinkingBar ref={thinkingBarRef} />
+          {timelineVisible && (
+            <div className="mt-3 ml-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3">
+              <ThoughtTimeline visible={timelineVisible} />
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Original ChatPanel with enhanced handlers */}
       <ChatPanel 
         {...props}
         messages={enhancedMessages}
         onSendMessage={handleSendMessage}
+        style={{
+          paddingTop: thinking.visible ? '120px' : '0px',
+          transition: 'padding-top 0.3s ease'
+        } as React.CSSProperties}
       />
+      
+      {/* Timeline toggle button */}
+      {thinking.visible && (
+        <div className="absolute bottom-20 right-4 z-20">
+          <button
+            onClick={toggleTimeline}
+            className="bg-card border border-border rounded-full px-3 py-1 text-xs text-muted-foreground hover:text-card-foreground transition-colors shadow-lg"
+          >
+            {timelineVisible ? 'Hide' : 'Show'} Timeline
+          </button>
+        </div>
+      )}
     </div>
   );
 }
