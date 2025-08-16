@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppHeader } from './AppHeader';
 import { NavigationPanel } from './NavigationPanel';
 import { SearchPanel } from './SearchPanel';
-import { ChatPanel } from './ChatPanel';
+import { ChatPanelWithThinking } from './ChatPanelWithThinking';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { HistoryPanel } from './panels/HistoryPanel';
 import { LanguagePanel } from './panels/LanguagePanel';
@@ -512,7 +512,7 @@ export const SEFGHApp = () => {
     switch (state.activeView) {
       case 'chat':
         return (
-          <ChatPanel
+          <ChatPanelWithThinking
             messages={state.messages}
             onSendMessage={sendMessage}
             onEditMessage={editMessage}
