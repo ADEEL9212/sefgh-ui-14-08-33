@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Save, Download, FileText, Code, Type } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Save, Download, FileText, Code, Type, ArrowLeft, Upload, Share } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { canvasAnimations, uiAnimations } from '@/components/animations';
 
 interface CanvasData {
   id: string;
@@ -36,6 +40,7 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -62,9 +67,6 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
             e.preventDefault();
             handleSave();
             break;
-          case 'Escape':
-            handleClose();
-            break;
         }
       }
       
@@ -77,46 +79,58 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, canvas]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canvas) return;
     
-    onSave({
-      ...canvas,
-      lastModified: new Date(),
-    });
-    
-    toast({
-      title: "Canvas saved",
-      description: "Your document has been saved successfully",
-      duration: 2000,
-    });
+    try {
+      await onSave({
+        ...canvas,
+        lastModified: new Date(),
+      });
+      
+      toast({
+        title: "Canvas saved",
+        description: "Your document has been saved successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Save failed",
+        description: "Could not save your document. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleExport = () => {
     if (!canvas) return;
 
-    const element = document.createElement('a');
-    const file = new Blob([canvas.content], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    
-    const extension = canvas.mode === 'markdown' ? '.md' : canvas.mode === 'code' ? '.txt' : '.txt';
-    element.download = `${canvas.title}${extension}`;
-    
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    
+    const exportFormats = [
+      { format: 'txt', label: 'Text' },
+      { format: 'md', label: 'Markdown' },
+      { format: 'json', label: 'JSON' }
+    ];
+
+    // For now, export as markdown
+    const blob = new Blob([canvas.content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${canvas.title}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
     toast({
       title: "Canvas exported",
-      description: `Downloaded as ${canvas.title}${extension}`,
-      duration: 2000,
+      description: "Your document has been downloaded",
     });
   };
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
-      const confirmed = window.confirm('You have unsaved changes. Are you sure you want to close?');
-      if (!confirmed) return;
+      const shouldClose = confirm("You have unsaved changes. Are you sure you want to close?");
+      if (!shouldClose) return;
     }
     onClose();
   };
@@ -133,122 +147,218 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
     setIsEditing(false);
   };
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleTitleSave();
-    } else if (e.key === 'Escape') {
-      setTempTitle(canvas?.title || '');
-      setIsEditing(false);
-    }
+  const handleTitleCancel = () => {
+    setTempTitle(canvas?.title || '');
+    setIsEditing(false);
   };
 
-  const getModeIcon = (mode: string) => {
-    switch (mode) {
-      case 'markdown': return FileText;
-      case 'code': return Code;
-      case 'text': return Type;
-      default: return FileText;
-    }
-  };
+  const modes = [
+    { id: 'markdown', label: 'Markdown', icon: FileText },
+    { id: 'code', label: 'Code', icon: Code },
+    { id: 'text', label: 'Text', icon: Type }
+  ];
 
-  if (!isOpen || !canvas) return null;
-
-  const ModeIcon = getModeIcon(canvas.mode);
+  if (!canvas) return null;
 
   return (
-    <div className={`fixed inset-0 z-50 flex ${isOpen ? 'animate-fade-in' : 'animate-fade-out'}`}>
-      {/* Mobile backdrop */}
-      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm md:hidden" onClick={handleClose} />
-      
-      {/* Canvas Panel */}
-      <div className={`
-        ml-auto h-full bg-background border-l shadow-2xl
-        w-full md:w-[40%] lg:w-[35%] xl:w-[30%]
-        transform transition-transform duration-200 ease-out
-        ${isOpen ? 'translate-x-0' : 'translate-x-full'}
-      `}>
-        <Card className="h-full rounded-none border-0 flex flex-col">
-          {/* Header */}
-          <CardHeader className="flex-row items-center justify-between space-y-0 p-4 border-b">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <ModeIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-              
+    <motion.div
+      className="h-full flex flex-col bg-background"
+      variants={canvasAnimations.overlay}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+    >
+      {/* Header */}
+      <motion.div 
+        className="flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-sm"
+        variants={uiAnimations.button}
+        initial="initial"
+        animate="animate"
+      >
+        <div className="flex items-center justify-between p-4">
+          {/* Left: Back button and title */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div variants={uiAnimations.iconButton} whileHover="hover" whileTap="tap">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClose}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent>Back to chat</TooltipContent>
+            </Tooltip>
+
+            {/* Title */}
+            <div className="flex-1 min-w-0">
               {isEditing ? (
-                <input
-                  ref={titleInputRef}
-                  value={tempTitle}
-                  onChange={(e) => setTempTitle(e.target.value)}
-                  onBlur={handleTitleSave}
-                  onKeyDown={handleTitleKeyDown}
-                  className="flex-1 text-lg font-semibold bg-transparent border-b border-primary focus:outline-none"
-                  placeholder="Document title"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    ref={titleInputRef}
+                    value={tempTitle}
+                    onChange={(e) => setTempTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleTitleSave();
+                      if (e.key === 'Escape') handleTitleCancel();
+                    }}
+                    onBlur={handleTitleSave}
+                    className="h-8 text-sm font-medium"
+                  />
+                </div>
               ) : (
-                <h2 
-                  className="text-lg font-semibold cursor-pointer hover:text-primary truncate"
+                <motion.button
                   onClick={handleTitleEdit}
-                  title={canvas.title}
+                  className="text-left font-medium truncate hover:text-primary transition-colors"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   {canvas.title}
-                </h2>
+                </motion.button>
               )}
-              
+            </div>
+
+            {/* Unsaved indicator */}
+            <AnimatePresence>
               {hasUnsavedChanges && (
-                <Badge variant="secondary" className="text-xs">
-                  Unsaved
-                </Badge>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                >
+                  <Badge variant="outline" className="text-xs">
+                    Unsaved
+                  </Badge>
+                </motion.div>
               )}
-            </div>
+            </AnimatePresence>
+          </div>
 
-            <div className="flex items-center gap-2">
-              {/* Mode selector */}
-              <div className="flex items-center gap-1 bg-muted rounded-md p-1">
-                {(['text', 'markdown', 'code'] as const).map((mode) => {
-                  const Icon = getModeIcon(mode);
-                  return (
-                    <Button
-                      key={mode}
-                      variant={canvas.mode === mode ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => onModeChange(mode)}
-                      className="h-7 w-7 p-0"
-                      title={`${mode} mode`}
+          {/* Center: Mode toggles */}
+          <div className="flex items-center gap-1 mx-4">
+            {modes.map((mode) => {
+              const Icon = mode.icon;
+              const isActive = canvas.mode === mode.id;
+              
+              return (
+                <Tooltip key={mode.id}>
+                  <TooltipTrigger asChild>
+                    <motion.div
+                      variants={uiAnimations.iconButton}
+                      whileHover="hover"
+                      whileTap="tap"
                     >
-                      <Icon className="h-3 w-3" />
-                    </Button>
-                  );
-                })}
-              </div>
+                      <Button
+                        variant={isActive ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => onModeChange(mode.id as 'markdown' | 'code' | 'text')}
+                        className="h-7 w-7 p-0"
+                        title={`${mode.label} mode`}
+                      >
+                        <Icon className="h-3 w-3" />
+                      </Button>
+                    </motion.div>
+                  </TooltipTrigger>
+                  <TooltipContent>{mode.label} mode</TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
 
-              <Button variant="ghost" size="sm" onClick={handleSave} title="Save (Ctrl+S)">
-                <Save className="h-4 w-4" />
-              </Button>
-              
-              <Button variant="ghost" size="sm" onClick={handleExport} title="Export">
-                <Download className="h-4 w-4" />
-              </Button>
-              
-              <Button variant="ghost" size="sm" onClick={handleClose} title="Close (Esc)">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
+          {/* Right: Action buttons */}
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div variants={uiAnimations.iconButton} whileHover="hover" whileTap="tap">
+                  <Button variant="ghost" size="sm" onClick={handleSave} disabled={!hasUnsavedChanges}>
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent>Save (Ctrl+S)</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div variants={uiAnimations.iconButton} whileHover="hover" whileTap="tap">
+                  <Button variant="ghost" size="sm" onClick={handleExport}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent>Export</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div variants={uiAnimations.iconButton} whileHover="hover" whileTap="tap">
+                  <Button variant="ghost" size="sm" onClick={handleClose}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent>Close (Esc)</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </motion.div>
 
-          {/* Editor */}
-          <CardContent className="flex-1 p-0 overflow-hidden">
+      {/* Editor */}
+      <motion.div 
+        className="flex-1 overflow-hidden"
+        variants={canvasAnimations.element}
+        initial="initial"
+        animate="animate"
+      >
+        <Card className="h-full rounded-none border-0">
+          <CardContent className="h-full p-0">
             <textarea
               ref={editorRef}
               value={canvas.content}
               onChange={(e) => onContentChange(e.target.value)}
               placeholder={`Start writing your ${canvas.mode} document...`}
-              className="w-full h-full p-6 bg-muted/30 border-0 outline-none resize-none font-mono text-sm leading-relaxed"
+              className="w-full h-full p-6 bg-transparent border-0 outline-none resize-none font-mono text-sm leading-relaxed"
               style={{
-                fontFamily: canvas.mode === 'code' ? 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace' : 'inherit'
+                fontFamily: canvas.mode === 'code' 
+                  ? 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace' 
+                  : 'inherit'
               }}
             />
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </motion.div>
+
+      {/* Footer with stats */}
+      <motion.div 
+        className="flex-shrink-0 border-t border-border bg-card/50 backdrop-blur-sm px-4 py-2"
+        variants={uiAnimations.button}
+        initial="initial"
+        animate="animate"
+      >
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-4">
+            <span>
+              {canvas.content.split(' ').filter(word => word.length > 0).length} words
+            </span>
+            <span>
+              {canvas.content.length} characters
+            </span>
+            <span>
+              {canvas.content.split('\n').length} lines
+            </span>
+          </div>
+          <div>
+            Last modified: {canvas.lastModified.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 };

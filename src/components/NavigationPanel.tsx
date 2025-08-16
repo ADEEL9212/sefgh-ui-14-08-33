@@ -15,8 +15,7 @@ import {
   Github,
   Sun,
   Moon,
-  X,
-  Brain
+  X
 } from 'lucide-react';
 
 interface NavigationPanelProps {
@@ -39,7 +38,6 @@ export const NavigationPanel = ({
   const navigate = useNavigate();
   const navigationItems = [
     { id: 'chat', label: 'New Chat', icon: MessageSquare, description: 'Start a new AI conversation' },
-    { id: 'thinking-demo', label: 'Thinking Demo', icon: Brain, description: 'Experience the privacy-safe thinking process', route: '/thinking-demo' },
     { id: 'history', label: 'Chat History', icon: History, description: 'View previous chat sessions' },
     { id: 'docs', label: 'Documentation', icon: Book, description: 'Browse documentation and guides' },
     { id: 'playground', label: 'Playground', icon: Play, description: 'Interactive development environment' },
