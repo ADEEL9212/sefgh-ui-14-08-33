@@ -79,12 +79,13 @@ const ChatPanelContent = ({
   // Handle loading state changes for thinking animation
   useEffect(() => {
     if (!isLoading && thinking.visible) {
-      // Hide thinking animation when response starts coming in
+      // Give thinking animation more time to be visible, especially for quick responses/errors
       setTimeout(() => {
+        setThinkingVisible(false);
         resetThinking();
-      }, 200);
+      }, 1500); // Increased from 200ms to 1500ms
     }
-  }, [isLoading, thinking.visible, resetThinking]);
+  }, [isLoading, thinking.visible, resetThinking, setThinkingVisible]);
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (showAttachMenu && !(event.target as Element).closest('.attach-menu-container')) {
@@ -112,7 +113,7 @@ const ChatPanelContent = ({
         completeStep('understand');
         startStep('plan', 'Planning response');
         onSendMessage(input.trim());
-      }, 500);
+      }, 800); // Increased delay to make thinking more visible
       
       setInput('');
     }
