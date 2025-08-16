@@ -6,7 +6,7 @@
 import React, { useRef, useState } from 'react';
 import { ChatProvider } from '@/providers/ChatProvider';
 import { ChatPanel } from './ChatPanel';
-import { ThinkingBar, ThinkingBarRef } from './chat/ThinkingBar';
+import { ThinkingAnimation } from './ThinkingAnimation';
 import { ThoughtTimeline, useThoughtTimeline } from './chat/ThoughtTimeline';
 import { useChat } from '@/providers/ChatProvider';
 import { useSimulatedStream } from '@/hooks/useStreamSSE';
@@ -76,7 +76,6 @@ function EnhancedChatPanelInner(props: Omit<EnhancedChatPanelProps, 'enableThink
   } = useChat();
   
   const { isVisible: timelineVisible, toggle: toggleTimeline } = useThoughtTimeline();
-  const thinkingBarRef = useRef<ThinkingBarRef>(null);
   
   const simulatedStream = useSimulatedStream({
     onChunk: (chunk) => {
@@ -136,9 +135,6 @@ function EnhancedChatPanelInner(props: Omit<EnhancedChatPanelProps, 'enableThink
       await delay(600);
       completeStep('plan');
       
-      // Add tool event
-      thinkingBarRef.current?.addToolChip('search');
-      
       // Step 3: Searching
       startStep('retrieve', 'Searching knowledge...', { toolName: 'github' });
       await delay(800);
@@ -175,7 +171,7 @@ function EnhancedChatPanelInner(props: Omit<EnhancedChatPanelProps, 'enableThink
       {/* Thinking overlay */}
       {thinking.visible && (
         <div className="absolute top-0 left-0 right-0 z-10 p-4">
-          <ThinkingBar ref={thinkingBarRef} />
+          <ThinkingAnimation visible={thinking.visible} />
           {timelineVisible && (
             <div className="mt-3 ml-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3">
               <ThoughtTimeline visible={timelineVisible} />

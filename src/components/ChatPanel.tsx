@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Send, Copy, RotateCcw, Edit3, Trash2, User, Bot, Loader2, Plus, Paperclip, HardDrive, Code, Mic, Settings, Github, ImageIcon, Lightbulb, Globe, PaintBucket, ChevronDown, ChevronRight, BookOpen, Filter, X, Search, MoreHorizontal, Download, Share2, FileText, FileDown, File } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ChatService } from '@/services/chatService';
-import { ThinkingBar } from '@/components/chat/ThinkingBar';
+import { ThinkingAnimation } from '@/components/ThinkingAnimation';
 import { ChatProvider, useChat } from '@/providers/ChatProvider';
 interface Message {
   id: string;
@@ -438,7 +438,7 @@ const ChatPanelContent = ({
         {/* Thinking animation */}
         {thinking.visible && (
           <div className="px-4 py-2">
-            <ThinkingBar />
+            <ThinkingAnimation visible={thinking.visible} />
           </div>
         )}
 
